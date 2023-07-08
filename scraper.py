@@ -1,74 +1,79 @@
 # -*- coding: utf-8 -*-
+from typing import List, Dict, Union, Optional
+import logging
+import pandas as pd
 from googlemaps import GoogleMapsScraper
-from datetime import datetime, timedelta
-import argparse
-import csv
-from termcolor import colored
-import time
+import fire
+
+# Constants
+SORT_OPTIONS = {"most_relevant": 0, "newest": 1, "highest_rating": 2, "lowest_rating": 3}
+
+# Logger setup
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logger = logging.getLogger(__name__)
 
 
-ind = {'most_relevant' : 0 , 'newest' : 1, 'highest_rating' : 2, 'lowest_rating' : 3 }
-HEADER = ['id_review', 'caption', 'relative_date', 'retrieval_date', 'rating', 'username', 'n_review_user', 'n_photo_user', 'url_user']
-HEADER_W_SOURCE = ['id_review', 'caption', 'relative_date','retrieval_date', 'rating', 'username', 'n_review_user', 'n_photo_user', 'url_user', 'url_source']
+def scrape_reviews(
+    url: str, scraper: GoogleMapsScraper, sort_option: str, num_reviews: int, include_source: bool, place_data: Dict
+) -> List[Dict[str, Union[str, int]]]:
+    """Scrape reviews from a given URL."""
+    scraper.click_on_reviews_tab()
 
-def csv_writer(source_field, ind_sort_by, path='data/'):
-    outfile= ind_sort_by + '_gm_reviews.csv'
-    targetfile = open(path + outfile, mode='w', encoding='utf-8', newline='\n')
-    writer = csv.writer(targetfile, quoting=csv.QUOTE_MINIMAL)
+    logger.info(f"Starting to scrape reviews for URL: {url}")
+    if scraper.sort_by(url, SORT_OPTIONS[sort_option]) != 0:
+        logger.error("Error sorting reviews")
+        return []
 
-    if source_field:
-        h = HEADER_W_SOURCE
-    else:
-        h = HEADER
-    writer.writerow(h)
+    reviews_data = []
+    review_count = 0
+    while review_count < num_reviews:
+        logger.info(f"Fetching reviews, current count: {review_count}")
+        reviews = scraper.get_reviews(review_count)
+        if not reviews:
+            logger.info(f"No reviews found for this URL: {url}")
+            break
 
-    return writer
+        for review in reviews:
+            review_data = review.copy()
+            review_data.update(place_data)  # Add place data to review data
+            if include_source:
+                review_data["url_source"] = url
+            reviews_data.append(review_data)
+        review_count += len(reviews)
+    logger.info(f"Finished scraping reviews for URL: {url}")
+    return reviews_data
 
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Google Maps reviews scraper.')
-    parser.add_argument('--N', type=int, default=100, help='Number of reviews to scrape')
-    parser.add_argument('--i', type=str, default='urls.txt', help='target URLs file')
-    parser.add_argument('--sort_by', type=str, default='newest', help='most_relevant, newest, highest_rating or lowest_rating')
-    parser.add_argument('--place', dest='place', action='store_true', help='Scrape place metadata')
-    parser.add_argument('--debug', dest='debug', action='store_true', help='Run scraper using browser graphical interface')
-    parser.add_argument('--source', dest='source', action='store_true', help='Add source url to CSV file (for multiple urls in a single file)')
-    parser.set_defaults(place=False, debug=False, source=False)
+def main(
+    num_reviews: int = 100,
+    input_file: str = "urls.txt",
+    sort_option: str = "newest",
+    include_place: bool = False,
+    debug_mode: bool = False,
+    include_source: bool = False,
+    output_file: str = "gm_reviews.csv",
+):
+    """Scrape Google Maps reviews and save them to a CSV file."""
+    logger.info("Starting the Google Maps reviews scraper.")
 
-    args = parser.parse_args()
-
-    # store reviews in CSV file
-    writer = csv_writer(args.source, args.sort_by)
-
-    with GoogleMapsScraper(debug=args.debug) as scraper:
-        with open(args.i, 'r') as urls_file:
-            for url in urls_file:
-                if args.place:
-                    print(scraper.get_account(url))
+    review_dataframe = pd.DataFrame()
+    with GoogleMapsScraper(debug=debug_mode) as scraper:
+        with open(input_file, "r") as urls_file:
+            for url in map(str.strip, urls_file):
+                logger.info(f"Scraping URL: {url}")
+                place_data = scraper.get_account(url) if include_place else {}
+                logging.debug(f"Place data: {place_data}")
+                reviews_data = scrape_reviews(url, scraper, sort_option, num_reviews, include_source, place_data)
+                if reviews_data:
+                    logger.info(f"Reviews data: {reviews_data}")
+                    review_dataframe = pd.concat([review_dataframe, pd.DataFrame(reviews_data)], ignore_index=True)
                 else:
-                    error = scraper.sort_by(url, ind[args.sort_by])
+                    logger.warning(f"No reviews data obtained for URL: {url}")
 
-                    if error == 0:
+    logging.info(f"___________{review_dataframe.columns}")
+    review_dataframe.to_csv(output_file)
+    logger.info(f"Saved reviews to {output_file}")
 
-                        n = 0
 
-                        #if ind[args.sort_by] == 0:
-                        #    scraper.more_reviews()
-
-                        while n < args.N:
-
-                            # logging to std out
-                            print(colored('[Review ' + str(n) + ']', 'cyan'))
-
-                            reviews = scraper.get_reviews(n)
-                            if len(reviews) == 0:
-                                break
-
-                            for r in reviews:
-                                row_data = list(r.values())
-                                if args.source:
-                                    row_data.append(url[:-1])
-
-                                writer.writerow(row_data)
-
-                            n += len(reviews)
+if __name__ == "__main__":
+    fire.Fire(main)
