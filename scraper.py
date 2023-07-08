@@ -17,7 +17,6 @@ def scrape_reviews(
     url: str, scraper: GoogleMapsScraper, sort_option: str, num_reviews: int, include_source: bool, place_data: Dict
 ) -> List[Dict[str, Union[str, int]]]:
     """Scrape reviews from a given URL."""
-    scraper.click_on_reviews_tab()
 
     logger.info(f"Starting to scrape reviews for URL: {url}")
     if scraper.sort_by(url, SORT_OPTIONS[sort_option]) != 0:
@@ -62,15 +61,12 @@ def main(
             for url in map(str.strip, urls_file):
                 logger.info(f"Scraping URL: {url}")
                 place_data = scraper.get_account(url) if include_place else {}
-                logging.debug(f"Place data: {place_data}")
                 reviews_data = scrape_reviews(url, scraper, sort_option, num_reviews, include_source, place_data)
                 if reviews_data:
-                    logger.info(f"Reviews data: {reviews_data}")
                     review_dataframe = pd.concat([review_dataframe, pd.DataFrame(reviews_data)], ignore_index=True)
                 else:
                     logger.warning(f"No reviews data obtained for URL: {url}")
 
-    logging.info(f"___________{review_dataframe.columns}")
     review_dataframe.to_csv(output_file)
     logger.info(f"Saved reviews to {output_file}")
 

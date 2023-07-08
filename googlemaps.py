@@ -44,8 +44,10 @@ class GoogleMapsScraper:
         return True
 
     def sort_by(self, url, ind):
+
         self.driver.get(url)
         self.__click_on_cookie_agreement()
+        self.click_on_reviews_tab()
 
         wait = WebDriverWait(self.driver, MAX_WAIT)
 
@@ -60,6 +62,7 @@ class GoogleMapsScraper:
                 clicked = True
                 time.sleep(3)
             except Exception as e:
+                raise e
                 tries += 1
                 self.logger.warn("Failed to click sorting button")
 
@@ -125,13 +128,14 @@ class GoogleMapsScraper:
 
     def click_on_reviews_tab(self):
         try:
-            logging.info("Clicking on reviews tab")
+            logging.debug("Clicking on reviews tab")
 
             tab = self.driver.find_elements_by_xpath(
                 '//button[@data-tab-index="1" and @jsaction="pane.placetabs.tabClick; mousedown:pane.placetabs.dragTabs; focus:pane.placetabs.focus"]'
             )
             tab[0].click()
-            logging.info("Clicked on reviews tab")
+            time.sleep(3)
+            logging.debug("Clicked on reviews tab")
 
             return True
         except Exception as e:
