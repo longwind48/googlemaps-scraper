@@ -1,1 +1,2 @@
 https://www.google.com/maps/place/Plaza+Singapura/@1.3005371,103.8426607,17z/data=!4m16!1m9!3m8!1s0x31da19bd7e725147:0x73f8899801be03cf!2sPlaza+Singapura!8m2!3d1.3005317!4d103.8452356!9m1!1b1!16zL20vMDltbjFs!3m5!1s0x31da19bd7e725147:0x73f8899801be03cf!8m2!3d1.3005317!4d103.8452356!16zL20vMDltbjFs?entry=ttu
+https://www.google.com/maps/place/313@somerset/@1.3010951,103.8377747,17.89z/data=!3m1!5s0x31da1990c3df99e7:0x3257cebf98954f0!4m6!3m5!1s0x31da199127c62a1d:0xe42abb67cad4364f!8m2!3d1.3010451!4d103.8385792!16s%2Fm%2F0p3m6pk?entry=ttu
